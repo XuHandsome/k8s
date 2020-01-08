@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: kube-ops
+  labels:
+    name: postgresql
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+  selector:
+    name: postgresql
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgresql-pv-claim
+  namespace: kube-ops
+  labels:
+    app: gitlab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  selector:
+    matchLabels:
+      pv: postgresql-pv
+
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: postgresql
+  namespace: kube-ops
+  labels:
+    name: gitlab
+spec:
+  template:
+    metadata:
+      name: postgresql
+      labels:
+        name: gitlab
+    spec:
+      containers:
+        - name: postgresql
+          image: sameersbn/postgresql:10
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DB_USER
+              value: gitlab
+            - name: DB_PASS
+              value: whoami
+              # valueFrom:
+              #   secretKeyRef:
+              #     name: pg-pass
+              #     key: password
+            - name: DB_NAME
+              value: gitlab_production
+            - name: DB_EXTENSION
+              value: pg_trgm
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - mountPath: /var/lib/postgresql
+              name: postgresql-persistent-storage
+              subPath: gitlab-postgresql
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -h
+                - localhost
+                - -U
+                - postgres
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -h
+                - localhost
+                - -U
+                - postgres
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+      volumes:
+        - name: postgresql-persistent-storage
+          persistentVolumeClaim:
+            claimName: postgresql-pv-claim

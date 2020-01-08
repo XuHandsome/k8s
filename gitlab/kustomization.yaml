@@ -1,0 +1,17 @@
+secretGenerator:
+  - name: pg-pass
+    namespace: kube-ops
+    literals:
+      - password=whoami
+  - name: gitlab-pass
+    namespace: kube-ops
+    literals:
+      - password=whoami
+
+resources:
+  - pg-pv.yaml
+  - gitlab-postgresql.yaml
+  - redis-pv.yaml
+  - gitlab-redis.yaml
+  - gitlab-pv.yaml
+  - gitlab.yaml
